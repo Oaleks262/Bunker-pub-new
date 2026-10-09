@@ -1,0 +1,7 @@
+import { db, menu, fail, sameOrigin, isStaff } from '@/lib/store';
+import { categories } from '@/lib/menu';
+export async function GET(request:Request){try{if(!await isStaff(request))return Response.json({error:'Доступ лише для персоналу'},{status:403});return Response.json({items:await menu()},{headers:{'Cache-Control':'no-store'}});}catch(e){return fail(e)}}
+export async function POST(request:Request){try{if(!sameOrigin(request)||!await isStaff(request))return Response.json({error:'Доступ лише для персоналу'},{status:403});const p:any=await request.json();
+ if(p.action==='item'){const x=p.item;if(!x||typeof x.id!=='string'||x.id.length>100||typeof x.name!=='string'||!x.name.trim()||x.name.length>150||typeof x.about!=='string'||x.about.length>1000||typeof x.volume!=='string'||x.volume.length>50||!Number.isInteger(x.price)||x.price<1||x.price>100000||!categories.includes(x.category)||typeof x.available!=='boolean'||typeof x.hidden!=='boolean')return Response.json({error:'Перевірте назву, ціну та категорію'},{status:400});const item={id:x.id,name:x.name.trim(),about:x.about.trim(),volume:x.volume.trim(),price:x.price,category:x.category,available:x.available,hidden:x.hidden};await db().prepare('INSERT INTO menu_edits(id,payload) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(item.id,JSON.stringify(item)).run();}
+ else return Response.json({error:'Невідома дія'},{status:400});return Response.json({ok:true});
+}catch(e){return fail(e)}}
